@@ -1,0 +1,11 @@
+// Para o Docker baixar as imagens e subir os sistemas.
+docker-compose up -d
+or
+docker compose up --build -d
+
+// Acessar o docker
+http://localhost:5678
+
+// Acesso
+Localhost123
+

@@ -1,0 +1,7 @@
+/arquivos_prf/csv
+/arquivos_prf/raw
+*.pkl
+postgres_data/
+n8n_data/
+.vscode/
+.idea/

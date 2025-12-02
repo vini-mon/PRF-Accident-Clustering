@@ -1,0 +1,9 @@
+// Dados abertos da PRF
+https://www.gov.br/prf/pt-br/acesso-a-informacao/dados-abertos/dados-abertos-da-prf
+
+// Dicionário para os acidentes
+https://www.gov.br/prf/pt-br/acesso-a-informacao/dados-abertos/dicionario-acidentes
+
+// GitHub (Accident Clustering)
+https://github.com/vini-mon/PRF-Accident-Clustering
+

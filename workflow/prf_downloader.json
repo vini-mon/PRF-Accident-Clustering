@@ -1,0 +1,407 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "fieldToSplitOut": "file_name, link_download",
+        "options": {
+          "disableDotNotation": true,
+          "destinationFieldName": "",
+          "includeBinary": true
+        }
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -128
+      ],
+      "id": "63798f53-e970-48ed-907e-e7998aeb4864",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "url": "https://www.gov.br/prf/pt-br/acesso-a-informacao/dados-abertos/dicionario-acidentes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        176,
+        64
+      ],
+      "id": "4e7bd05c-7aa0-4c5d-a2e1-f952ec72c12b",
+      "name": "HTTP Request - Dicionario"
+    },
+    {
+      "parameters": {
+        "url": "https://www.gov.br/prf/pt-br/acesso-a-informacao/dados-abertos/dados-abertos-da-prf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        176,
+        -128
+      ],
+      "id": "a507af24-9e81-41e6-989e-7854ca1de527",
+      "name": "HTTP Request - CSV",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4bf30994-6ff5-45cf-bc39-c97e831eff2a",
+              "name": "file_name",
+              "value": "={{ \"acidentes_\" + ($json.file_name.match(/20\\d{2}/) || [])[0] }}",
+              "type": "string"
+            },
+            {
+              "id": "a72f49ae-e243-4a03-94c0-a77b8cd7a61a",
+              "name": "file_id",
+              "value": "={{\n\n  // Usa regex \\/d\\/([^/]+) para capturar o ID que vem depois de /d/\n  (\n    $json.link_download.match( /\\/d\\/([^/]+)/ ) \n    ? $json.link_download.match( /\\/d\\/([^/]+)/ )[1] // Verificação de segurança, string vazia\n    : \"\"\n  )\n\n}}\n",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "include": "selected",
+        "includeFields": "link_download",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        752,
+        -128
+      ],
+      "id": "64154984-1f4e-4495-a9b9-36f94ae58a11",
+      "name": "Edit Fields - ID",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "command": "mkdir -p /files_prf/raw /files_prf/csv /files_prf/dict"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        176,
+        -304
+      ],
+      "id": "7f21bb95-1833-495d-a883-c91bbfcfdc94",
+      "name": "Execute Command - mkdir"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=python3 /scripts/decompress.py \"/files_prf/raw/{{ $json.file_name }}.zip\" \"/files_prf/csv\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        -128
+      ],
+      "id": "5dcf75c8-cf02-4323-8925-94c399abed8b",
+      "name": "Execute Command - Extract"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "link_download",
+              "cssSelector": "tr:has(td:contains(\"Agrupados por ocorrência\")) a:first-of-type",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            },
+            {
+              "key": "file_name",
+              "cssSelector": "tr:has(td:contains(\"Agrupados por ocorrência\")) td:first-child",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        -128
+      ],
+      "id": "f91c96fe-abbc-43ca-a904-64952923c1be",
+      "name": "Extract - CSV"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "link_download",
+              "cssSelector": "p:has(strong:contains(\"agrupados por ocorrência (até 2016)\")) a:first-of-type",
+              "returnValue": "attribute",
+              "attribute": "href"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        64
+      ],
+      "id": "53a6c03e-15c1-4085-96c7-429a1237b193",
+      "name": "Extract - Dict"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.file_id }}",
+          "mode": "id"
+        },
+        "options": {
+          "fileName": "={{ $json.file_name }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        944,
+        -128
+      ],
+      "id": "4cd62065-34fe-4fc2-a937-c2d48710ffe5",
+      "name": "Download - CSV",
+      "retryOnFail": false,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zyrcVo7hKye2ssAP",
+          "name": "Google Drive account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.link_download }}",
+          "mode": "url"
+        },
+        "options": {
+          "fileName": "dicionario"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        944,
+        64
+      ],
+      "id": "958eb023-db8e-4ec6-b32e-1bb5b047b983",
+      "name": "Download - Dict",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "zyrcVo7hKye2ssAP",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/files_prf/raw/{{ $json.file_name }}.zip",
+        "dataPropertyName": "={{ $input.item.binary.data }}",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        -128
+      ],
+      "id": "fe8c1e60-a435-4945-9ddc-03bcbadb4ce2",
+      "name": "Write - CSV"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/files_prf/dict/{{ $input.item.binary.data.fileName }}.{{ $input.item.binary.data.fileExtension }}",
+        "dataPropertyName": "={{ $input.item.binary.data }}",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        64
+      ],
+      "id": "6ebd079c-0a7c-4a36-b3cf-d16ee7d91411",
+      "name": "Write - PDF"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        -128
+      ],
+      "id": "329620ba-4d55-4621-a72f-cd9ef52efa4c",
+      "name": "Execute workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields - ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Dicionario": {
+      "main": [
+        [
+          {
+            "node": "Extract - Dict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - CSV": {
+      "main": [
+        [
+          {
+            "node": "Extract - CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields - ID": {
+      "main": [
+        [
+          {
+            "node": "Download - CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract - CSV": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract - Dict": {
+      "main": [
+        [
+          {
+            "node": "Download - Dict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download - CSV": {
+      "main": [
+        [
+          {
+            "node": "Write - CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download - Dict": {
+      "main": [
+        [
+          {
+            "node": "Write - PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write - CSV": {
+      "main": [
+        [
+          {
+            "node": "Execute Command - Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute workflow": {
+      "main": [
+        [
+          {
+            "node": "Execute Command - mkdir",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request - CSV",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request - Dicionario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false,
+    "timeSavedPerExecution": 3
+  },
+  "versionId": "c85345b9-c6c6-4310-b8b8-91d6f6646045",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6f20317fe8c46271d97c19a95248df9cde57c0ee511f58a4924708d369a0b2c7"
+  },
+  "id": "DfASGDtutPTF1Rf4",
+  "tags": []
+}
