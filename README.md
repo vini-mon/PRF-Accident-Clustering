@@ -30,6 +30,7 @@ A solução foi construída sobre três pilares:
 O processo de ETL foi desenhado para ser resiliente e escalável. A ferramenta *n8n* foi utilizada para criar um fluxo visual que realiza o *scraping* do portal de dados abertos, baixa os arquivos ZIP anuais, extrai os CSVs e os organiza em um *Data Lake* local.
 
 ![Fluxo de Automação ETL no n8n](img/n8n_workflow.png)
+
 *Figura 1: Pipeline de orquestração no n8n.*
 
 **Desafios Superados:**
@@ -43,6 +44,7 @@ A análise foi dividida em duas frentes complementares:
 Utilizou-se o algoritmo **K-Prototypes** para agrupar acidentes com base em características mistas (numéricas e categóricas), como tipo de pista, clima, horário e severidade. O número ideal de clusters (K=6) foi determinado pelo Método do Cotovelo (*Elbow Method*).
 
 ![Método do Cotovelo](img/elbow_method.png)
+
 *Figura 2: Definição do número ideal de clusters.*
 
 ### Cluster B: Análise Geoespacial
@@ -52,20 +54,76 @@ Utilizou-se o algoritmo **DBSCAN** com distância de Haversine para identificar 
 
 ## Resultados: Perfis e Hotspots
 
+### 1. Fatores de Risco e Infraestrutura
+Antes da clusterização, analisamos como a infraestrutura impacta a gravidade. Os dados mostram que a geometria da via é determinante para a chance de sobrevivência.
+
+Embora curvas e interseções sejam locais frequentes de acidentes, o risco de morte explode (+95%) em trechos de relevo (serras) e pontes/túneis (+33%), onde a área de escape é inexistente.
+
+![Fatores de Risco](img/fator_risco.png)
+
+*Figura 3: Distribuição dos clusters de acidentes na malha viária brasileira.*
+
+
+![Gravidade do Tipo de Acidente](img/gravidade_acidente.png)
+
+*Figura 4: Gravidade dos tipos de acidentes quando o fator em questão existe.*
+
+
 ### Taxonomia dos Acidentes (Cluster A)
-Foram identificados 6 perfis distintos de acidentes:
-1.  **O Acidente Padrão (63.9%):** Colisões traseiras leves em retas e tempo bom.
-2.  **A Tangente da Curva (19.3%):** Saídas de pista em curvas, com média letalidade.
-3.  **Conflito Urbano (7.1%):** Colisões transversais em cruzamentos.
-4.  **Tragédia de Massa (5.4%):** Múltiplos veículos e vítimas, com **letalidade 4x superior à média**.
-5.  **Risco do Relevo (3.4%):** Acidentes em serras e declives.
-6.  **Gargalo de Obra (0.9%):** Ocorrências em desvios ou estreitamento de pista.
+
+Utilizando o algoritmo K-Prototypes, segmentamos os acidentes em 6 perfis comportamentais. Três deles contam a história principal da segurança viária no Brasil:
+
+
+**Foram identificados 6 perfis distintos de acidentes:**
+
+
+| ID | Perfil (Cluster)            | Frequência | Letalidade | Característica Básica |
+|----|-----------------------------|------------|------------|------------------------|
+| 0  | Risco do Relevo             | 3.4%       | Média/Baixa| Acidentes em serras e declives (ex.: saída de leito em relevo).       |
+| 1  | Gargalo de Obra             | 0.9%       | Baixa      | Ocorrências em desvios/estreitamento de pista (obras/desvios).        |
+| 2  | A Tangente da Curva         | 19.3%      | Média      | Saídas de pista em curvas; fator geométrico dominante.                |
+| 3  | O Acidente Padrão           | 63.9%      | Baixa      | Colisões traseiras em retas; problema de fluxo e atenção.            |
+| 4  | Tragédia de Massa           | 5.4%       | Altíssima  | Múltiplos veículos e vítimas; letalidade ~4x a média.                 |
+| 5  | Conflito Urbano             | 7.1%       | Média      | Colisões transversais em cruzamentos (áreas urbanas).                |
+
+
+**Clusters de maior interesse:**
+
+| ID | Perfil (Cluster)       | Frequência | Letalidade | Característica Básica |
+|----|-------------------------|------------|------------|------------------------|
+| 2  | A Tangente da Curva     | 19.3%      | Média      | Saídas de pista em curvas; comportamento 100% associado à geometria da via. |
+| 3  | O Acidente Padrão       | 63.9%      | Baixa      | Colisões traseiras leves em retas e tempo bom; problema de fluxo e atenção. |
+| 4  | Tragédia de Massa       | 5.4%       | Altíssima  | Poucos casos, mas com múltiplos veículos e letalidade 4x maior que a média. |
+
 
 ### Mapeamento de Hotspots (Cluster B)
-A análise geoespacial permitiu localizar com precisão os pontos críticos. O mapa abaixo destaca os clusters, onde a cor vermelha indica a presença de vítimas fatais.
+A análise geoespacial com DBSCAN permitiu diferenciar "Gargalos Logísticos" de "Armadilhas Mortais" através de diferentes níveis de zoom (Micro e Macro).
 
 ![Mapa de Hotspots](img/mapa_hotspots.png)
-*Figura 3: Distribuição dos clusters de acidentes na malha viária brasileira.*
+
+*Figura 5: Distribuição dos clusters. Pontos vermelhos indicam presença de vítimas fatais.*
+
+- **O Insight "Micro" (Raio 0.2 km):**
+  - **Local:** O ponto exato mais letal do Brasil não é uma curva de serra sinuosa, mas uma reta urbana na BR-116 (SP), Km 207.
+  - **Acidentes:** > 7.241.
+  - **Mortes:** 278 (3.8%).
+  - **Diagnóstico:** A “Análise de DNA” deste ponto revelou que 75% dos acidentes são do tipo “Padrão/Reta”.  
+    Isso mostra que a combinação de **alto volume + alta velocidade em área urbana** é mais fatal do que a geometria complexa da via.
+
+
+![Distribuição do Cluster B - 0.2 Km](img/cluster_B_0.2km.png)
+
+*Figura 6: Decomposição Comportamental e do perfil do Hotspot Mais Letal (BR-116/SP - Km 207).*
+
+- **O Insight "Macro" (Raio 5.0 km):**
+  - **Local:** A região mais caótica do país é o trecho da BR-101 (SC), Km 169.
+  - **Acidentes:** 72.943 (Concentração massiva).
+  - **Mortes:** 2.904 (4.0%).
+  - **Diagnóstico:** Um gargalo logístico e turístico que trava o estado, caracterizado por saturação da via e obras constantes.
+
+![Distribuição do Cluster B - 0.2 Km](img/cluster_B_5.0km.png)
+
+*Figura 7: Decomposição Comportamental e do perfil do Hotspot Mais Caótico (BR-101/SC - Km 169).*
 
 ## Como Executar o Projeto
 
